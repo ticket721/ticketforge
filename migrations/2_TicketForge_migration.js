@@ -1,7 +1,5 @@
-const DevDai = artifacts.require("DevDai");
+const TicketForge = artifacts.require("TicketForge");
 
 module.exports = async function(deployer) {
-    let dai_contract_address = null;
-
-    await deployer.deploy(DevDai);
+    await deployer.deploy(TicketForge);
 };
