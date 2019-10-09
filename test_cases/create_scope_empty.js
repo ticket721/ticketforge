@@ -6,7 +6,7 @@ module.exports = {
         const TicketForgeArtifact = artifacts.require('TicketForge');
         const TicketForge = await TicketForgeArtifact.deployed();
 
-        await expect(TicketForge.createScope('', ZERO, [])).to.eventually.be.rejectedWith('TicketForge::createScope | name empty or with invalid characters');
+        await expect(TicketForge.createScope('', ZERO, [], [])).to.eventually.be.rejectedWith('TicketForge::createScope | name empty or with invalid characters');
 
     }
 }

@@ -5,7 +5,7 @@ module.exports = {
 
         const TicketForgeArtifact = artifacts.require('TicketForge');
         const TicketForge = await TicketForgeArtifact.deployed();
-        await TicketForge.createScope('t721', ZERO, [accounts[1]]);
+        await TicketForge.createScope('t721', ZERO, [accounts[1]], []);
 
         const ValidERC721ReceiverArtifact = artifacts.require('ValidERC721Receiver');
         const ValidERC721Receiver = await ValidERC721ReceiverArtifact.new();

@@ -10,6 +10,8 @@ const { create_scope_twice } = require('../test_cases/create_scope_twice');
 
 const { mint } = require('../test_cases/mint');
 const { mint_invalid_scope } = require('../test_cases/mint_invalid_scope');
+const { mint_invalid_minter } = require('../test_cases/mint_invalid_minter');
+const { mint_valid_minter } = require('../test_cases/mint_valid_minter');
 
 const { transferFrom } = require('../test_cases/transferFrom');
 const { transferFrom_approved } = require('../test_cases/transferFrom_approved');
@@ -53,6 +55,8 @@ contract('ticketforge', (accounts) => {
 
         it('mint', mint.bind(null, accounts, expect));
         it('mint with invalid scope', mint_invalid_scope.bind(null, accounts, expect));
+        it('mint with invalid minter', mint_invalid_minter.bind(null, accounts, expect));
+        it('mint with valid minter', mint_valid_minter.bind(null, accounts, expect));
 
     })
 

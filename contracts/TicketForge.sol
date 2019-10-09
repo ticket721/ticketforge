@@ -4,10 +4,12 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721Enumerable.sol";
 
 contract TicketForge is ERC721, ERC721Enumerable {
+    event Mint(string indexed scope, address indexed owner, address indexed issuer, uint256 ticketId);
 
     struct Scope {
         bool exists;
         mapping (address => bool) transfer_admins;
+        mapping (address => bool) mint_admins;
         address tokenuri_provider;
         uint256 index;
     }
@@ -40,7 +42,12 @@ contract TicketForge is ERC721, ERC721Enumerable {
      *                         Use at your own risk on wallets ...
      *
      */
-    function createScope(string calldata name, address tokenuri_provider, address[] calldata transfer_admins) external {
+    function createScope(
+        string calldata name,
+        address tokenuri_provider,
+        address[] calldata transfer_admins,
+        address[] calldata mint_admins
+        ) external {
         require(verifyScopeName(name) == true,
             "TicketForge::createScope | name empty or with invalid characters");
         require(scopes[name].exists == false,
@@ -51,6 +58,14 @@ contract TicketForge is ERC721, ERC721Enumerable {
 
         for (uint idx = 0; idx < transfer_admins.length; ++idx) {
             scopes[name].transfer_admins[transfer_admins[idx]] = true;
+        }
+
+        if (mint_admins.length == 0) {
+            scopes[name].mint_admins[address(0)] = true;
+        }
+
+        for (uint idx = 0; idx < mint_admins.length; ++idx) {
+            scopes[name].mint_admins[mint_admins[idx]] = true;
         }
 
         scopes[name].index = scopeByIndex.push(name) - 1;
@@ -79,6 +94,14 @@ contract TicketForge is ERC721, ERC721Enumerable {
         return scopes[name].transfer_admins[admin];
     }
 
+    function isAllowedMinter(uint256 scopeIndex, address minter) public view returns (bool) {
+        if (scopes[scopeByIndex[scopeIndex]].mint_admins[address(0)] == true) {
+            return true;
+        }
+
+        return scopes[scopeByIndex[scopeIndex]].mint_admins[minter];
+    }
+
     /**
      *  @notice Create a new ERC-721 token assigned to given address, under specified scope
      *
@@ -88,8 +111,11 @@ contract TicketForge is ERC721, ERC721Enumerable {
      */
     function mint(address to, uint256 scopeIndex) external {
         require(scopeByIndexExists(scopeIndex), "TicketForge::mint | invalid scope for ticket minting");
+        require(isAllowedMinter(scopeIndex, msg.sender), "TicketForge::mint | unauthorized minter");
         _mint(to, ticket_id_counter);
         scopeByTicket[ticket_id_counter] = scopeIndex;
+        emit Mint(scopeByIndex[scopeIndex], to, msg.sender, ticket_id_counter);
+        emit Transfer(msg.sender, to, ticket_id_counter);
         ++ticket_id_counter;
     }
 
@@ -99,13 +125,13 @@ contract TicketForge is ERC721, ERC721Enumerable {
      * Requires the msg.sender to be the owner, approved, or operator.
      * @param from current owner of the token
      * @param to address to receive the ownership of the given token ID
-     * @param tokenId uint256 ID of the token to be transferred
+     * @param ticketId uint256 ID of the token to be transferred
      */
-    function transferFrom(address from, address to, uint256 tokenId) public {
+    function transferFrom(address from, address to, uint256 ticketId) public {
         //solhint-disable-next-line max-line-length
-        require(_isApprovedOrOwnerOrScopeAdmin(msg.sender, tokenId), "ERC721: transfer caller is not owner, approved or scope admin");
+        require(_isApprovedOrOwnerOrScopeAdmin(msg.sender, ticketId), "ERC721: transfer caller is not owner, approved or scope admin");
 
-        _transferFrom(from, to, tokenId);
+        _transferFrom(from, to, ticketId);
     }
 
     /**
@@ -117,10 +143,10 @@ contract TicketForge is ERC721, ERC721Enumerable {
      * Requires the msg.sender to be the owner, approved, or operator
      * @param from current owner of the token
      * @param to address to receive the ownership of the given token ID
-     * @param tokenId uint256 ID of the token to be transferred
+     * @param ticketId uint256 ID of the token to be transferred
      */
-    function safeTransferFrom(address from, address to, uint256 tokenId) public {
-        safeTransferFrom(from, to, tokenId, "");
+    function safeTransferFrom(address from, address to, uint256 ticketId) public {
+        safeTransferFrom(from, to, ticketId, "");
     }
 
     /**
@@ -132,12 +158,13 @@ contract TicketForge is ERC721, ERC721Enumerable {
      * Requires the msg.sender to be the owner, approved, or operator
      * @param from current owner of the token
      * @param to address to receive the ownership of the given token ID
-     * @param tokenId uint256 ID of the token to be transferred
+     * @param ticketId uint256 ID of the token to be transferred
      * @param _data bytes data to send along with a safe transfer check
      */
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public {
-        transferFrom(from, to, tokenId);
-        require(_checkOnERC721Received(from, to, tokenId, _data), "ERC721: transfer to non ERC721Receiver implementer");
+    function safeTransferFrom(address from, address to, uint256 ticketId, bytes memory _data) public {
+        transferFrom(from, to, ticketId);
+        require(_checkOnERC721Received(from, to, ticketId, _data),
+        "ERC721: transfer to non ERC721Receiver implementer");
     }
 
 

@@ -1,3 +1,5 @@
+pragma solidity >=0.4.25 <0.6.0;
+
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 contract ValidERC721Receiver is IERC721Receiver {
