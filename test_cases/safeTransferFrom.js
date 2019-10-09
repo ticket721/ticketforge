@@ -9,9 +9,9 @@ module.exports = {
 
         const scope_infos = await TicketForge.getScope('t721');
 
-        await TicketForge.mint(accounts[0], scope_infos.scope_index.toNumber());
+        await TicketForge.methods['mint(address,uint256)'](accounts[0], scope_infos.scope_index.toNumber());
 
-        await TicketForge.safeTransferFrom(accounts[0], accounts[1], 1);
+        await TicketForge.methods['safeTransferFrom(address,address,uint256)'](accounts[0], accounts[1], 1);
 
         expect((await TicketForge.balanceOf(accounts[1])).toNumber()).to.equal(1);
         expect((await TicketForge.balanceOf(accounts[0])).toNumber()).to.equal(0);

@@ -9,6 +9,7 @@ const { create_scope_empty } = require('../test_cases/create_scope_empty');
 const { create_scope_twice } = require('../test_cases/create_scope_twice');
 
 const { mint } = require('../test_cases/mint');
+const { mint_token_uri } = require('../test_cases/mint_token_uri');
 const { mint_invalid_scope } = require('../test_cases/mint_invalid_scope');
 const { mint_invalid_minter } = require('../test_cases/mint_invalid_minter');
 const { mint_valid_minter } = require('../test_cases/mint_valid_minter');
@@ -28,6 +29,10 @@ const { safeTransferFrom_data_approved } = require('../test_cases/safeTransferFr
 const { safeTransferFrom_data_scope_admin } = require('../test_cases/safeTransferFrom_data_scope_admin');
 const { safeTransferFrom_data_unapproved } = require('../test_cases/safeTransferFrom_data_unapproved');
 const { safeTransferFrom_data_invalid_contract } = require('../test_cases/safeTransferFrom_data_invalid_contract');
+
+const { tokenUriProvider } = require('../test_cases/tokenUriProvider');
+const { name } = require('../test_cases/name');
+const { symbol } = require('../test_cases/symbol');
 
 const expect = chai.expect;
 contract('ticketforge', (accounts) => {
@@ -54,6 +59,7 @@ contract('ticketforge', (accounts) => {
     describe('mint', () => {
 
         it('mint', mint.bind(null, accounts, expect));
+        it('mint with token uri', mint_token_uri.bind(null, accounts, expect));
         it('mint with invalid scope', mint_invalid_scope.bind(null, accounts, expect));
         it('mint with invalid minter', mint_invalid_minter.bind(null, accounts, expect));
         it('mint with valid minter', mint_valid_minter.bind(null, accounts, expect));
@@ -88,5 +94,12 @@ contract('ticketforge', (accounts) => {
 
     })
 
+    describe('ERC721 Metadata', () => {
+        
+        it('tokenUriProvider', tokenUriProvider.bind(null, accounts, expect));
+        it('name', name.bind(null, accounts, expect));
+        it('symbol', symbol.bind(null, accounts, expect));
+
+    })
 
 });

@@ -2,10 +2,24 @@ pragma solidity >=0.4.25 <0.6.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721Enumerable.sol";
+import "./ITokenUriProvider.sol";
 
+//
+//              .-------..___
+//              '-._     :_.-'
+//                 ) _ (
+//                '-' '-'
+//   ┌┬┐┬┌─┐┬┌─┌─┐┌┬┐  ┌─┐┌─┐┬─┐┌─┐┌─┐
+//    │ ││  ├┴┐├┤  │   ├┤ │ │├┬┘│ ┬├┤
+//    ┴ ┴└─┘┴ ┴└─┘ ┴   └  └─┘┴└─└─┘└─┘
+//
 contract TicketForge is ERC721, ERC721Enumerable {
     event Mint(string indexed scope, address indexed owner, address indexed issuer, uint256 ticketId);
 
+    /**
+    * @notice Represents a Scope. All tickets should belong to a scope. A scope adds
+    *         rules to the ticket's mechanisms.
+    */
     struct Scope {
         bool exists;
         mapping (address => bool) transfer_admins;
@@ -14,10 +28,103 @@ contract TicketForge is ERC721, ERC721Enumerable {
         uint256 index;
     }
 
-    mapping (string => Scope) private scopes;
-    string[] private scopeByIndex;
-    uint256 private ticket_id_counter = 1;
-    mapping (uint256 => uint256) private scopeByTicket;
+    struct Ticket {
+        uint256 scope;
+    }
+
+    mapping (string => Scope)   private scopes;
+    string[]                    private scopeByIndex;
+    uint256                     private ticket_id_counter = 1;
+    mapping (uint256 => Ticket) private ticketInfos;
+    mapping (uint256 => string) private ticketURIs;
+    string                      private _name;
+    string                      private _symbol;
+
+    constructor(string memory contract_name, string memory symbol) public {
+        _name = contract_name;
+        _symbol = symbol;
+    }
+
+    /**
+     *  @notice Utility to get scope's existence and tokenURI provider.
+     *
+     *  @param scope_name Name of the scope to check.
+     *
+     */
+    function getScope(string calldata scope_name)
+    external view returns (bool exists, address tokenuri_provider, uint256 scope_index) {
+        return (scopes[scope_name].exists, scopes[scope_name].tokenuri_provider, scopes[scope_name].index);
+    }
+
+    /**
+     *  @notice Utility to know if a provided address is a admin of provided scope name
+     *
+     *  @param scope_name Name of the scope to check.
+     *
+     *  @param admin Address to check.
+     *
+     */
+    function isScopeAdmin(string calldata scope_name, address admin) external view returns (bool) {
+        return scopes[scope_name].transfer_admins[admin];
+    }
+
+    /**
+     *  @notice Utility to know if a provided address is a mint admin able to create tickets.
+     *          If `address(0)` is a mint admin, this will return true for all addresses.
+     *
+     *  @param scopeIndex index of scope to check
+     *
+     *  @param minter address of minter to check
+     *
+     */
+    function isAllowedMinter(uint256 scopeIndex, address minter) public view returns (bool) {
+        if (scopes[scopeByIndex[scopeIndex]].mint_admins[address(0)] == true) {
+            return true;
+        }
+
+        return scopes[scopeByIndex[scopeIndex]].mint_admins[minter];
+    }
+
+    /**
+     *  @notice Utility to recover ERC-721 Metadata Name
+     *
+     */
+    function name() external view returns (string memory) {
+        return _name;
+    }
+
+    /**
+     *  @notice Utility to recover ERC-721 Metadata Symbol
+     *
+     */
+    function symbol() external view returns (string memory) {
+        return _symbol;
+    }
+
+    /**
+     *  @notice Utility to recover the tokenUri for a specific ticketId.
+     *          If a TokenUri provider is set on the scope, will call him instead.
+     *
+     *  @param ticketId Id of Ticket
+     *
+     */
+    function tokenURI(uint256 ticketId) external view returns (string memory) {
+        require(_exists(ticketId), "ERC721Metadata: URI query for nonexistent token");
+
+        if (scopes[scopeByIndex[ticketInfos[ticketId].scope]].tokenuri_provider != address(0)) {
+            return ITokenUriProvider(
+                    scopes[scopeByIndex[ticketInfos[ticketId].scope]].tokenuri_provider
+                ).tokenURI(ticketId);
+        } else {
+            return ticketURIs[ticketId];
+        }
+    }
+
+    modifier mintCheck(uint256 scopeIndex) {
+        require(scopeByIndexExists(scopeIndex), "TicketForge::mint | invalid scope for ticket minting");
+        require(isAllowedMinter(scopeIndex, msg.sender), "TicketForge::mint | unauthorized minter");
+        _;
+    }
 
     /**
      *  @notice Creates an immutable scope. Define transfer admins that can trigger any transfers
@@ -33,7 +140,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
      *
      *  @dev The function MUST throw if the provided name is already defined
      *
-     *  @param name Name to give to the new scope
+     *  @param scope_name Name to give to the new scope
      *
      *  @param tokenuri_provider Address of TokenURIProvider contract. `address(0)` is none should be used.
      *
@@ -43,63 +150,32 @@ contract TicketForge is ERC721, ERC721Enumerable {
      *
      */
     function createScope(
-        string calldata name,
+        string calldata scope_name,
         address tokenuri_provider,
         address[] calldata transfer_admins,
         address[] calldata mint_admins
-        ) external {
-        require(verifyScopeName(name) == true,
+    ) external {
+        require(verifyScopeName(scope_name) == true,
             "TicketForge::createScope | name empty or with invalid characters");
-        require(scopes[name].exists == false,
+        require(scopes[scope_name].exists == false,
             "TicketForge::createScope | scope name already in use");
 
-        scopes[name].exists = true;
-        scopes[name].tokenuri_provider = tokenuri_provider;
+        scopes[scope_name].exists = true;
+        scopes[scope_name].tokenuri_provider = tokenuri_provider;
 
         for (uint idx = 0; idx < transfer_admins.length; ++idx) {
-            scopes[name].transfer_admins[transfer_admins[idx]] = true;
+            scopes[scope_name].transfer_admins[transfer_admins[idx]] = true;
         }
 
         if (mint_admins.length == 0) {
-            scopes[name].mint_admins[address(0)] = true;
+            scopes[scope_name].mint_admins[address(0)] = true;
         }
 
         for (uint idx = 0; idx < mint_admins.length; ++idx) {
-            scopes[name].mint_admins[mint_admins[idx]] = true;
+            scopes[scope_name].mint_admins[mint_admins[idx]] = true;
         }
 
-        scopes[name].index = scopeByIndex.push(name) - 1;
-    }
-
-    /**
-     *  @notice Utility to get scope's existence and tokenURI provider.
-     *
-     *  @param name Name of the scope to check.
-     *
-     */
-    function getScope(string calldata name)
-    external view returns (bool exists, address tokenuri_provider, uint256 scope_index) {
-        return (scopes[name].exists, scopes[name].tokenuri_provider, scopes[name].index);
-    }
-
-    /**
-     *  @notice Utility to know if a provided address is a admin of provided scope name
-     *
-     *  @param name Name of the scope to check.
-     *
-     *  @param admin Address to check.
-     *
-     */
-    function isScopeAdmin(string calldata name, address admin) external view returns (bool) {
-        return scopes[name].transfer_admins[admin];
-    }
-
-    function isAllowedMinter(uint256 scopeIndex, address minter) public view returns (bool) {
-        if (scopes[scopeByIndex[scopeIndex]].mint_admins[address(0)] == true) {
-            return true;
-        }
-
-        return scopes[scopeByIndex[scopeIndex]].mint_admins[minter];
+        scopes[scope_name].index = scopeByIndex.push(scope_name) - 1;
     }
 
     /**
@@ -109,11 +185,27 @@ contract TicketForge is ERC721, ERC721Enumerable {
      *  @param scopeIndex Index of desired scope
      *
      */
-    function mint(address to, uint256 scopeIndex) external {
-        require(scopeByIndexExists(scopeIndex), "TicketForge::mint | invalid scope for ticket minting");
-        require(isAllowedMinter(scopeIndex, msg.sender), "TicketForge::mint | unauthorized minter");
+    function mint(address to, uint256 scopeIndex) external mintCheck(scopeIndex) {
         _mint(to, ticket_id_counter);
-        scopeByTicket[ticket_id_counter] = scopeIndex;
+        ticketInfos[ticket_id_counter] = Ticket({scope: scopeIndex});
+        emit Mint(scopeByIndex[scopeIndex], to, msg.sender, ticket_id_counter);
+        emit Transfer(msg.sender, to, ticket_id_counter);
+        ++ticket_id_counter;
+    }
+
+    /**
+     *  @notice Creates a new ERC-721 token assigned to given address, under specified scope. Also
+     *          assigns given token uri;
+     *
+     *  @param to Address of initial owner
+     *  @param scopeIndex Index of desired scope
+     *  @param tokenUri Token Uri to assign to new token
+     *
+     */
+    function mint(address to, uint256 scopeIndex, string calldata tokenUri) external mintCheck(scopeIndex) {
+        _mint(to, ticket_id_counter);
+        ticketInfos[ticket_id_counter] = Ticket({scope: scopeIndex});
+        ticketURIs[ticket_id_counter] = tokenUri;
         emit Mint(scopeByIndex[scopeIndex], to, msg.sender, ticket_id_counter);
         emit Transfer(msg.sender, to, ticket_id_counter);
         ++ticket_id_counter;
@@ -123,6 +215,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
      * @dev Transfers the ownership of a given token ID to another address.
      * Usage of this method is discouraged, use `safeTransferFrom` whenever possible.
      * Requires the msg.sender to be the owner, approved, or operator.
+     *
      * @param from current owner of the token
      * @param to address to receive the ownership of the given token ID
      * @param ticketId uint256 ID of the token to be transferred
@@ -141,6 +234,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
      * `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`; otherwise,
      * the transfer is reverted.
      * Requires the msg.sender to be the owner, approved, or operator
+     *
      * @param from current owner of the token
      * @param to address to receive the ownership of the given token ID
      * @param ticketId uint256 ID of the token to be transferred
@@ -156,6 +250,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
      * `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`; otherwise,
      * the transfer is reverted.
      * Requires the msg.sender to be the owner, approved, or operator
+     *
      * @param from current owner of the token
      * @param to address to receive the ownership of the given token ID
      * @param ticketId uint256 ID of the token to be transferred
@@ -164,12 +259,11 @@ contract TicketForge is ERC721, ERC721Enumerable {
     function safeTransferFrom(address from, address to, uint256 ticketId, bytes memory _data) public {
         transferFrom(from, to, ticketId);
         require(_checkOnERC721Received(from, to, ticketId, _data),
-        "ERC721: transfer to non ERC721Receiver implementer");
+            "ERC721: transfer to non ERC721Receiver implementer");
     }
 
-
-    function verifyScopeName(string memory name) internal pure returns (bool) {
-        bytes memory check_bytes = bytes(name);
+    function verifyScopeName(string memory scope_name) internal pure returns (bool) {
+        bytes memory check_bytes = bytes(scope_name);
 
         if (check_bytes.length == 0) return false;
 
@@ -189,7 +283,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
         if (_isApprovedOrOwner(owner, ticketId)) {
             return true;
         }
-        return scopes[scopeByIndex[scopeByTicket[ticketId]]].transfer_admins[owner];
+        return scopes[scopeByIndex[ticketInfos[ticketId].scope]].transfer_admins[owner];
     }
 
     function scopeByIndexExists(uint256 index) internal view returns (bool) {

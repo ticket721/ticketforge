@@ -1,7 +1,7 @@
 const { ZERO } = require('./utils');
 
 module.exports = {
-    mint: async function mint(accounts, expect) {
+    mint_token_uri: async function mint_token_uri(accounts, expect) {
 
         const TicketForgeArtifact = artifacts.require('TicketForge');
         const TicketForge = await TicketForgeArtifact.deployed();
@@ -9,9 +9,11 @@ module.exports = {
 
         const scope_infos = await TicketForge.getScope('t721');
 
-        await TicketForge.methods['mint(address,uint256)'](accounts[0], scope_infos.scope_index.toNumber());
+        await TicketForge.methods['mint(address,uint256,string)'](accounts[0], scope_infos.scope_index.toNumber(), 'hello');
 
         expect((await TicketForge.balanceOf(accounts[0])).toNumber()).to.equal(1);
+        expect((await TicketForge.tokenURI(1))).to.equal('hello');
+        expect(TicketForge.tokenURI(2)).to.eventually.be.rejectedWith('ERC721Metadata: URI query for nonexistent token');
 
     }
 }
