@@ -6,14 +6,13 @@ module.exports = async function(deployer) {
     let name = 'Test Ticket Forge';
     let symbol = 'TTKT';
 
-    if (config.extra_config && config.extra_config.external_modules && config.extra_config.external_modules.ticketforge) {
-        const arguments = config.extra_config.external_modules.ticketforge.arguments;
-        if (arguments !== null) {
-            name = arguments[0];
-            symbol = arguments[1];
+    if (config.args) {
+        const args = config.args;
+        if (args !== null) {
+            name = args.ERC721.name;
+            symbol = args.ERC721.symbol;
         }
     }
 
-    console.log(name, symbol);
     await deployer.deploy(TicketForge, name, symbol);
 };
