@@ -195,7 +195,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
 
     /**
      *  @notice Creates a new ERC-721 token assigned to given address, under specified scope. Also
-     *          assigns given token uri;
+     *          assigns given token uri.
      *
      *  @param to Address of initial owner
      *  @param scopeIndex Index of desired scope
