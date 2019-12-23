@@ -1,5 +1,5 @@
 {
-    "name": "@ticket721/ticketforge",
+    "name": "@ticket721contracts/ticketforge",
     "version": "1.0.0",
     "description": "the place where erc-721 tickets are born",
     "directories": {
@@ -7,7 +7,7 @@
     },
     "dependencies": {
         "@openzeppelin/contracts": "2.3.0",
-        "truffle": "^5.0.35"
+        "truffle": "5.1.5"
     },
     "devDependencies": {
         "@commitlint/cli": "^7.5.2",
