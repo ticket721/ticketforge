@@ -33,7 +33,9 @@
         "test:editorconfig": "editorconfig-cli",
         "test:lint": "solhint contracts/**/*.sol",
         "coverage:upload": "cat ./coverage/lcov.info | coveralls",
-        "test": "npm run test:truffle"
+        "test": "npm run test:truffle",
+        "@lerna/postinstall": "echo '@contracts/ticketforge has no postinstall'",
+        "@lerna/postclean": "echo '@contracts/tickerforge has no postclean'"
     },
     "repository": {
         "type": "git",
