@@ -19,7 +19,7 @@ const config = {
 };
 
 try {
-    const outter_config = require('../../prism');
+    const outter_config = require('../../contracts/prism');
     module.exports = {
         ...config,
         ...outter_config,
