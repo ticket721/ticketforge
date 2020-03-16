@@ -34,7 +34,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
 
     mapping (string => Scope)   private scopes;
     string[]                    private scopeByIndex;
-    uint256                     private ticket_id_counter = 1;
+    mapping (address => uint256) public mint_nonce;
     mapping (uint256 => Ticket) private ticketInfos;
     mapping (uint256 => string) private ticketURIs;
     string                      private _name;
@@ -113,8 +113,8 @@ contract TicketForge is ERC721, ERC721Enumerable {
 
         if (scopes[scopeByIndex[ticketInfos[ticketId].scope]].tokenuri_provider != address(0)) {
             return ITokenUriProvider(
-                    scopes[scopeByIndex[ticketInfos[ticketId].scope]].tokenuri_provider
-                ).tokenURI(ticketId);
+                scopes[scopeByIndex[ticketInfos[ticketId].scope]].tokenuri_provider
+            ).tokenURI(ticketId);
         } else {
             return ticketURIs[ticketId];
         }
@@ -179,18 +179,47 @@ contract TicketForge is ERC721, ERC721Enumerable {
     }
 
     /**
+     * @notice Retrieves the current mint nonce of an address
+     *
+     * @param owner Address to check
+     */
+    function getMintNonce(address owner) public view returns (uint256) {
+        return mint_nonce[owner];
+    }
+
+    /**
+     * @notice Generates the deterministic mint ID for an owner
+     *
+     * @param owner Address of initial token owner
+     * @param _mint_nonce Nonce of owner mintings
+     */
+    function getTokenID(address owner, uint256 _mint_nonce) public pure returns (uint256) {
+
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                owner,
+                _mint_nonce
+            )
+        );
+
+        return uint256(hash);
+    }
+
+    /**
      *  @notice Create a new ERC-721 token assigned to given address, under specified scope
      *
      *  @param to Address of initial owner
      *  @param scopeIndex Index of desired scope
-     *
      */
     function mint(address to, uint256 scopeIndex) external mintCheck(scopeIndex) {
-        _mint(to, ticket_id_counter);
-        ticketInfos[ticket_id_counter] = Ticket({scope: scopeIndex});
-        emit Mint(scopeByIndex[scopeIndex], to, msg.sender, ticket_id_counter);
-        emit Transfer(msg.sender, to, ticket_id_counter);
-        ++ticket_id_counter;
+
+        uint256 id = getTokenID(to, mint_nonce[to]);
+
+        _mint(to, id);
+        ticketInfos[id] = Ticket({scope: scopeIndex});
+        emit Mint(scopeByIndex[scopeIndex], to, msg.sender, id);
+        emit Transfer(msg.sender, to, id);
+        ++mint_nonce[to];
     }
 
     /**
@@ -200,15 +229,16 @@ contract TicketForge is ERC721, ERC721Enumerable {
      *  @param to Address of initial owner
      *  @param scopeIndex Index of desired scope
      *  @param tokenUri Token Uri to assign to new token
-     *
      */
     function mint(address to, uint256 scopeIndex, string calldata tokenUri) external mintCheck(scopeIndex) {
-        _mint(to, ticket_id_counter);
-        ticketInfos[ticket_id_counter] = Ticket({scope: scopeIndex});
-        ticketURIs[ticket_id_counter] = tokenUri;
-        emit Mint(scopeByIndex[scopeIndex], to, msg.sender, ticket_id_counter);
-        emit Transfer(msg.sender, to, ticket_id_counter);
-        ++ticket_id_counter;
+        uint256 id = getTokenID(to, mint_nonce[to]);
+
+        _mint(to, id);
+        ticketInfos[id] = Ticket({scope: scopeIndex});
+        ticketURIs[id] = tokenUri;
+        emit Mint(scopeByIndex[scopeIndex], to, msg.sender, id);
+        emit Transfer(msg.sender, to, id);
+        ++mint_nonce[to];
     }
 
     /**

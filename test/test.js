@@ -95,7 +95,7 @@ contract('ticketforge', (accounts) => {
     })
 
     describe('ERC721 Metadata', () => {
-        
+
         it('tokenUriProvider', tokenUriProvider.bind(null, accounts, expect));
         it('name', name.bind(null, accounts, expect));
         it('symbol', symbol.bind(null, accounts, expect));

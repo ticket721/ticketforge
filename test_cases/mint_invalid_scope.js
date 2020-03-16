@@ -9,7 +9,7 @@ module.exports = {
 
         const scope_infos = await TicketForge.getScope('t721');
 
-        expect(TicketForge.methods['mint(address,uint256)'](accounts[0], scope_infos.scope_index.toNumber() + 1)).to.eventually.be.rejectedWith('TicketForge::mint | invalid scope for ticket minting')
+        await expect(TicketForge.methods['mint(address,uint256)'](accounts[0], scope_infos.scope_index.toNumber() + 1)).to.eventually.be.rejectedWith('TicketForge::mint | invalid scope for ticket minting')
 
 
     }
