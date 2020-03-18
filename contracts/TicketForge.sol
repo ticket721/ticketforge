@@ -211,7 +211,10 @@ contract TicketForge is ERC721, ERC721Enumerable {
      *  @param to Address of initial owner
      *  @param scopeIndex Index of desired scope
      */
-    function mint(address to, uint256 scopeIndex) external mintCheck(scopeIndex) {
+    function mint(address to, uint256 scopeIndex)
+    external
+    mintCheck(scopeIndex)
+    returns (uint256) {
 
         uint256 id = getTokenID(to, mint_nonce[to]);
 
@@ -220,6 +223,8 @@ contract TicketForge is ERC721, ERC721Enumerable {
         emit Mint(scopeByIndex[scopeIndex], to, msg.sender, id);
         emit Transfer(msg.sender, to, id);
         ++mint_nonce[to];
+
+        return id;
     }
 
     /**
@@ -230,7 +235,10 @@ contract TicketForge is ERC721, ERC721Enumerable {
      *  @param scopeIndex Index of desired scope
      *  @param tokenUri Token Uri to assign to new token
      */
-    function mint(address to, uint256 scopeIndex, string calldata tokenUri) external mintCheck(scopeIndex) {
+    function mint(address to, uint256 scopeIndex, string calldata tokenUri)
+    external
+    mintCheck(scopeIndex)
+    returns (uint256) {
         uint256 id = getTokenID(to, mint_nonce[to]);
 
         _mint(to, id);
@@ -239,6 +247,8 @@ contract TicketForge is ERC721, ERC721Enumerable {
         emit Mint(scopeByIndex[scopeIndex], to, msg.sender, id);
         emit Transfer(msg.sender, to, id);
         ++mint_nonce[to];
+
+        return id;
     }
 
     /**
