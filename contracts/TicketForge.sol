@@ -24,6 +24,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
         bool exists;
         mapping (address => bool) transfer_admins;
         mapping (address => bool) mint_admins;
+        bool user_exchangeable;
         address tokenuri_provider;
         uint256 index;
     }
@@ -146,14 +147,17 @@ contract TicketForge is ERC721, ERC721Enumerable {
      *
      *  @param transfer_admins Array of addresses. They all become transfer admins for the scope's tickets. This
      *                         means they can trigger any transfers. Made to be used on contracts like marketplaces.
-     *                         Use at your own risk on wallets ...
      *
+     *  @param mint_admins Array of address allowed to mint tickets
+     *
+     *  @param user_exchangeable True if users can exchange tickets outside of the allowed transfer contracts
      */
     function createScope(
         string calldata scope_name,
         address tokenuri_provider,
         address[] calldata transfer_admins,
-        address[] calldata mint_admins
+        address[] calldata mint_admins,
+        bool user_exchangeable
     ) external {
         require(verifyScopeName(scope_name) == true,
             "TicketForge::createScope | name empty or with invalid characters");
@@ -162,6 +166,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
 
         scopes[scope_name].exists = true;
         scopes[scope_name].tokenuri_provider = tokenuri_provider;
+        scopes[scope_name].user_exchangeable = user_exchangeable;
 
         for (uint idx = 0; idx < transfer_admins.length; ++idx) {
             scopes[scope_name].transfer_admins[transfer_admins[idx]] = true;
@@ -261,10 +266,14 @@ contract TicketForge is ERC721, ERC721Enumerable {
      * @param ticketId uint256 ID of the token to be transferred
      */
     function transferFrom(address from, address to, uint256 ticketId) public {
-        //solhint-disable-next-line max-line-length
-        require(_isApprovedOrOwnerOrScopeAdmin(msg.sender, ticketId), "ERC721: transfer caller is not owner, approved or scope admin");
+        require(_isTransferLegal(msg.sender, from, ticketId),
+            "ERC721: transfer is illegal with given scope and parameters");
 
-        _transferFrom(from, to, ticketId);
+        if (_isTransferAdmin(msg.sender, ticketId)) {
+            ERC721._transferFrom(from, to, ticketId);
+        } else {
+            ERC721.transferFrom(from, to, ticketId);
+        }
     }
 
     /**
@@ -280,7 +289,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
      * @param ticketId uint256 ID of the token to be transferred
      */
     function safeTransferFrom(address from, address to, uint256 ticketId) public {
-        safeTransferFrom(from, to, ticketId, "");
+        TicketForge.safeTransferFrom(from, to, ticketId, "");
     }
 
     /**
@@ -297,7 +306,7 @@ contract TicketForge is ERC721, ERC721Enumerable {
      * @param _data bytes data to send along with a safe transfer check
      */
     function safeTransferFrom(address from, address to, uint256 ticketId, bytes memory _data) public {
-        transferFrom(from, to, ticketId);
+        TicketForge.transferFrom(from, to, ticketId);
         require(_checkOnERC721Received(from, to, ticketId, _data),
             "ERC721: transfer to non ERC721Receiver implementer");
     }
@@ -319,14 +328,17 @@ contract TicketForge is ERC721, ERC721Enumerable {
         return true;
     }
 
-    function _isApprovedOrOwnerOrScopeAdmin(address owner, uint256 ticketId) internal view returns (bool) {
-        if (_isApprovedOrOwner(owner, ticketId)) {
-            return true;
-        }
-        return scopes[scopeByIndex[ticketInfos[ticketId].scope]].transfer_admins[owner];
+    function _isTransferLegal(address caller, address from, uint256 ticketId) internal view returns (bool) {
+        return scopes[scopeByIndex[ticketInfos[ticketId].scope]].user_exchangeable
+        || scopes[scopeByIndex[ticketInfos[ticketId].scope]].transfer_admins[caller];
+    }
+
+    function _isTransferAdmin(address caller, uint256 ticketId) internal view returns (bool) {
+        return scopes[scopeByIndex[ticketInfos[ticketId].scope]].transfer_admins[caller];
     }
 
     function scopeByIndexExists(uint256 index) internal view returns (bool) {
         return scopeByIndex.length > index;
     }
+
 }

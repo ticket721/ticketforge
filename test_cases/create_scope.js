@@ -7,7 +7,7 @@ module.exports = {
         const TicketForgeArtifact = artifacts.require('TicketForge');
         const TicketForge = await TicketForgeArtifact.deployed();
 
-        await TicketForge.createScope('t721', ZERO, [accounts[1]], []);
+        await TicketForge.createScope('t721', ZERO, [accounts[1]], [], true);
 
         const res = await TicketForge.getScope('t721');
 
