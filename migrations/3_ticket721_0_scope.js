@@ -33,7 +33,8 @@ module.exports = async function(deployer, networkName) {
                 ],
                 [
                     T721Controller_address
-                ]
+                ],
+                false
             );
 
 
