@@ -7,11 +7,8 @@ module.exports = async function(deployer) {
     let symbol = 'TTKT';
 
     if (config.args) {
-        const args = config.args;
-        if (args !== null) {
-            name = args.ERC721.name;
-            symbol = args.ERC721.symbol;
-        }
+        name = config.args.ERC721.name;
+        symbol = config.args.ERC721.symbol;
     }
 
     await deployer.deploy(TicketForge, name, symbol);
